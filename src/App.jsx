@@ -223,6 +223,7 @@ export default function MovieFinder() {
   const [error, setError] = useState(null);
   const [selectedId, setSelectedId] = useState(null); // movie id being viewed
   const [detail, setDetail] = useState(null); // full movie + credits
+  const [history, setHistory] = useState([]); // 이전에 보던 영화 id 스택 (영화→배우→영화 탐색용)
   const [expandedPersonId, setExpandedPersonId] = useState(null);
   const [personDetail, setPersonDetail] = useState(null);
   const [genres, setGenres] = useState([]);
@@ -287,16 +288,37 @@ export default function MovieFinder() {
     return () => clearTimeout(debounceRef.current);
   }, [query]);
 
-  async function openMovie(id) {
+  async function loadMovie(id) {
     setSelectedId(id);
     setExpandedPersonId(null);
     setPersonDetail(null);
     setRecents((prev) => [id, ...prev.filter((x) => x !== id)].slice(0, 10));
+    window.scrollTo({ top: 0 });
     try {
       const d = await tmdb(`/movie/${id}`, { append_to_response: "credits" });
       setDetail(d);
     } catch (e) {
       setError("영화 정보를 불러오지 못했어요.");
+    }
+  }
+
+  // 목록/추천/찜에서 열거나, 상세 화면 안에서 다른 영화로 넘어갈 때
+  function openMovie(id) {
+    if (selectedId && selectedId !== id) {
+      setHistory((prev) => [...prev, selectedId]); // 지금 보던 영화를 기억해 두고 이동
+    }
+    loadMovie(id);
+  }
+
+  // 상세 화면의 "돌아가기": 이전 영화가 있으면 그 영화로, 없으면 목록으로
+  function goBack() {
+    if (history.length > 0) {
+      const prevId = history[history.length - 1];
+      setHistory((prev) => prev.slice(0, -1));
+      loadMovie(prevId);
+    } else {
+      setSelectedId(null);
+      setDetail(null);
     }
   }
 
@@ -344,13 +366,12 @@ export default function MovieFinder() {
         movie={detail}
         isFavorite={favorites.includes(detail.id)}
         onToggleFavorite={() => toggleFavorite(detail.id)}
-        onBack={() => {
-          setSelectedId(null);
-          setDetail(null);
-        }}
+        onBack={goBack}
+        backLabel={history.length > 0 ? "이전 영화로" : "돌아가기"}
         expandedPersonId={expandedPersonId}
         personDetail={personDetail}
         onOpenPerson={openPerson}
+        onOpenMovie={openMovie}
       />
     );
   }
@@ -555,7 +576,7 @@ function FavoriteRow({ id, onOpen, onToggle }) {
   );
 }
 
-function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, expandedPersonId, personDetail, onOpenPerson }) {
+function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, backLabel = "돌아가기", expandedPersonId, personDetail, onOpenPerson, onOpenMovie }) {
   const cast = (movie.credits?.cast || []).slice(0, 10);
   return (
     <div style={{ minHeight: "100%", background: TOKENS.ink, color: TOKENS.paper, fontFamily: "'Segoe UI', -apple-system, Roboto, sans-serif", padding: "36px 20px 60px" }}>
@@ -563,7 +584,7 @@ function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, expanded
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: TOKENS.muted, fontSize: 13.5, cursor: "pointer", padding: 0 }}>
             <ArrowLeft size={15} />
-            돌아가기
+            {backLabel}
           </button>
           <FavoriteButton active={isFavorite} onClick={onToggleFavorite} />
         </div>
@@ -626,13 +647,20 @@ function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, expanded
                             </div>
                           )}
                           <div style={{ fontSize: 11, color: TOKENS.marquee, marginBottom: 8, letterSpacing: 0.5, textTransform: "uppercase" }}>
-                            다른 출연작
+                            다른 출연작 · 누르면 그 영화로 이동
                           </div>
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                          <div style={{ display: "flex", gap: 10, overflowX: "auto", paddingBottom: 4 }}>
                             {(personDetail.movies || []).map((o) => (
-                              <span key={o.id} style={{ background: "rgba(225,29,72,0.08)", border: `1px solid rgba(225,29,72,0.35)`, color: TOKENS.marqueeBright, borderRadius: 999, padding: "5px 12px", fontSize: 12.5 }}>
-                                {o.title}
-                              </span>
+                              <button
+                                key={o.id}
+                                onClick={() => onOpenMovie(o.id)}
+                                title={o.title}
+                                style={{ flexShrink: 0, width: 72, background: "transparent", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}
+                              >
+                                <Poster path={o.poster_path} size={72} />
+                                <div style={{ fontSize: 11, marginTop: 4, color: TOKENS.paper, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.title}</div>
+                                <div style={{ fontSize: 10.5, color: TOKENS.muted }}>{(o.release_date || "").slice(0, 4)}</div>
+                              </button>
                             ))}
                           </div>
                         </>
