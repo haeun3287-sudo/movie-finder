@@ -527,9 +527,31 @@ export default function MovieFinder() {
             )}
 
             {!query.trim() && (
-              <div style={{ textAlign: "center", color: TOKENS.muted, fontSize: 14, padding: "50px 0", border: `1px dashed ${TOKENS.border}`, borderRadius: 10 }}>
-                영화 제목 또는 배우 이름을 입력해보세요.
-              </div>
+              recents.length > 0 ? (
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: TOKENS.marquee, letterSpacing: 1, textTransform: "uppercase" }}>
+                      <Clock size={13} />
+                      최근 본 영화
+                    </div>
+                    <button
+                      onClick={() => setRecents([])}
+                      style={{ background: "transparent", border: "none", color: TOKENS.muted, fontSize: 12, cursor: "pointer", padding: 0 }}
+                    >
+                      기록 지우기
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 14 }}>
+                    {recents.map((id) => (
+                      <FavoriteRow key={id} id={id} isFavorite={favorites.includes(id)} onOpen={() => openMovie(id)} onToggle={() => toggleFavorite(id)} />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: "center", color: TOKENS.muted, fontSize: 14, padding: "50px 0", border: `1px dashed ${TOKENS.border}`, borderRadius: 10 }}>
+                  영화 제목 또는 배우 이름을 입력해보세요.
+                </div>
+              )
             )}
           </>
         )}
@@ -592,13 +614,14 @@ export default function MovieFinder() {
   );
 }
 
-function FavoriteRow({ id, onOpen, onToggle }) {
+// id만 있는 영화를 TMDB에서 불러와 포스터 카드로 보여줌 (찜 목록·최근 본 영화 공용)
+function FavoriteRow({ id, onOpen, onToggle, isFavorite = true }) {
   const [m, setM] = useState(null);
   useEffect(() => {
     tmdb(`/movie/${id}`).then(setM).catch(() => {});
   }, [id]);
   if (!m) return null;
-  return <PosterCard movie={m} isFavorite={true} onOpen={onOpen} onToggleFavorite={onToggle} />;
+  return <PosterCard movie={m} isFavorite={isFavorite} onOpen={onOpen} onToggleFavorite={onToggle} />;
 }
 
 function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, backLabel = "돌아가기", expandedPersonId, personDetail, onOpenPerson, onOpenMovie }) {
