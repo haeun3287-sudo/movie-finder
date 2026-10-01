@@ -19,16 +19,18 @@ const BASE = "https://api.themoviedb.org/3";
 const IMG = "https://image.tmdb.org/t/p/w500";
 const IMG_SMALL = "https://image.tmdb.org/t/p/w185";
 
+// 다크 테마 색상 (ink = 배경, paper = 글자)
 const TOKENS = {
-  ink: "#FFFFFF",
-  surface: "#F6F6F6",
-  surfaceHover: "#ECECEC",
-  border: "#E1E1E1",
-  paper: "#111111",
-  muted: "#6E6E6E",
+  ink: "#0B0F19",
+  surface: "#151B2B",
+  surfaceHover: "#1E2638",
+  border: "#2A3347",
+  paper: "#F3F4F6",
+  muted: "#9AA3B5",
   marquee: "#E11D48",
   marqueeBright: "#F43F5E",
 };
+const IMG_BACKDROP = "https://image.tmdb.org/t/p/w1280";
 
 // character name -> movie title, curated from the earlier sample dataset
 const CHARACTER_TO_TITLE = {
@@ -200,10 +202,11 @@ function FavoriteButton({ active, onClick }) {
       }}
       aria-label="찜하기"
       style={{
-        background: active ? "rgba(225,29,72,0.1)" : "transparent",
-        border: `1px solid ${active ? TOKENS.marquee : TOKENS.border}`,
+        background: active ? "rgba(225,29,72,0.18)" : "rgba(11,15,25,0.7)",
+        border: `1px solid ${active ? TOKENS.marquee : "rgba(255,255,255,0.18)"}`,
         borderRadius: 999,
         padding: 7,
+        backdropFilter: "blur(4px)",
         cursor: "pointer",
         display: "flex",
         flexShrink: 0,
@@ -211,6 +214,42 @@ function FavoriteButton({ active, onClick }) {
     >
       <Heart size={14} color={active ? TOKENS.marquee : TOKENS.muted} fill={active ? TOKENS.marquee : "none"} />
     </button>
+  );
+}
+
+// 포스터 그리드용 카드 (검색 결과·찜 목록에서 공용)
+function PosterCard({ movie, isFavorite, onOpen, onToggleFavorite }) {
+  return (
+    <div
+      className="poster-card"
+      onClick={onOpen}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === "Enter" && onOpen()}
+      style={{ position: "relative", background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderRadius: 12, overflow: "hidden", cursor: "pointer" }}
+    >
+      <div style={{ aspectRatio: "2 / 3", background: "#1A2030" }}>
+        {movie.poster_path ? (
+          <img src={`${IMG}${movie.poster_path}`} alt="" loading="lazy" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Clapperboard size={28} color="rgba(255,255,255,0.25)" />
+          </div>
+        )}
+      </div>
+      <div style={{ position: "absolute", top: 8, right: 8 }}>
+        <FavoriteButton active={isFavorite} onClick={onToggleFavorite} />
+      </div>
+      {movie.vote_average > 0 && (
+        <div style={{ position: "absolute", top: 8, left: 8, background: "rgba(0,0,0,0.65)", color: "#FACC15", fontSize: 11.5, fontWeight: 700, padding: "3px 7px", borderRadius: 999, backdropFilter: "blur(4px)" }}>
+          ★ {movie.vote_average.toFixed(1)}
+        </div>
+      )}
+      <div style={{ padding: "10px 10px 12px" }}>
+        <div style={{ fontSize: 13.5, fontWeight: 700, lineHeight: 1.3, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{movie.title}</div>
+        <div style={{ fontSize: 12, color: TOKENS.muted, marginTop: 4 }}>{(movie.release_date || "").slice(0, 4)}</div>
+      </div>
+    </div>
   );
 }
 
@@ -383,8 +422,8 @@ export default function MovieFinder() {
   ];
 
   return (
-    <div style={{ minHeight: "100%", background: TOKENS.ink, color: TOKENS.paper, fontFamily: "'Segoe UI', -apple-system, Roboto, sans-serif", padding: "36px 20px 60px" }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div style={{ minHeight: "100%", background: TOKENS.ink, color: TOKENS.paper, fontFamily: "'Pretendard', -apple-system, 'Segoe UI', Roboto, sans-serif", padding: "36px 20px 60px" }}>
+      <div style={{ maxWidth: 860, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${TOKENS.border}`, paddingBottom: 18, marginBottom: 20 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
@@ -438,7 +477,7 @@ export default function MovieFinder() {
 
         {view === "search" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderBottom: `2px solid ${TOKENS.border}`, borderRadius: 8, padding: "13px 16px", marginBottom: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderRadius: 12, padding: "14px 18px", marginBottom: 22, boxShadow: "0 4px 20px rgba(0,0,0,0.35)" }}>
               <Search size={17} color={TOKENS.marquee} />
               <input
                 value={query}
@@ -473,20 +512,15 @@ export default function MovieFinder() {
             {movieResults.length > 0 && (
               <div>
                 <div style={{ fontSize: 12, color: TOKENS.marquee, marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" }}>영화 검색 결과</div>
-                <div style={{ display: "grid", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 14 }}>
                   {movieResults.map((m) => (
-                    <button
+                    <PosterCard
                       key={m.id}
-                      onClick={() => openMovie(m.id)}
-                      style={{ display: "flex", gap: 16, alignItems: "center", textAlign: "left", background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderLeft: "3px solid transparent", borderRadius: 10, padding: 14, cursor: "pointer" }}
-                    >
-                      <Poster path={m.poster_path} size={50} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ fontSize: 15.5, fontWeight: 700, marginBottom: 3 }}>{m.title}</div>
-                        <div style={{ fontSize: 12.5, color: TOKENS.muted }}>{(m.release_date || "").slice(0, 4)}</div>
-                      </div>
-                      <FavoriteButton active={favorites.includes(m.id)} onClick={() => toggleFavorite(m.id)} />
-                    </button>
+                      movie={m}
+                      isFavorite={favorites.includes(m.id)}
+                      onOpen={() => openMovie(m.id)}
+                      onToggleFavorite={() => toggleFavorite(m.id)}
+                    />
                   ))}
                 </div>
               </div>
@@ -505,7 +539,7 @@ export default function MovieFinder() {
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginBottom: 22 }}>
               <button
                 onClick={() => setRecGenre(null)}
-                style={{ background: recGenre === null ? "rgba(225,29,72,0.1)" : "transparent", color: recGenre === null ? TOKENS.marquee : TOKENS.muted, border: `1px solid ${recGenre === null ? TOKENS.marquee : TOKENS.border}`, borderRadius: 999, padding: "5px 13px", fontSize: 12.5, cursor: "pointer" }}
+                style={{ background: recGenre === null ? "rgba(225,29,72,0.18)" : "transparent", color: recGenre === null ? TOKENS.marquee : TOKENS.muted, border: `1px solid ${recGenre === null ? TOKENS.marquee : TOKENS.border}`, borderRadius: 999, padding: "5px 13px", fontSize: 12.5, cursor: "pointer" }}
               >
                 전체
               </button>
@@ -513,7 +547,7 @@ export default function MovieFinder() {
                 <button
                   key={g.id}
                   onClick={() => setRecGenre(g.id)}
-                  style={{ background: recGenre === g.id ? "rgba(225,29,72,0.1)" : "transparent", color: recGenre === g.id ? TOKENS.marquee : TOKENS.muted, border: `1px solid ${recGenre === g.id ? TOKENS.marquee : TOKENS.border}`, borderRadius: 999, padding: "5px 13px", fontSize: 12.5, cursor: "pointer" }}
+                  style={{ background: recGenre === g.id ? "rgba(225,29,72,0.18)" : "transparent", color: recGenre === g.id ? TOKENS.marquee : TOKENS.muted, border: `1px solid ${recGenre === g.id ? TOKENS.marquee : TOKENS.border}`, borderRadius: 999, padding: "5px 13px", fontSize: 12.5, cursor: "pointer" }}
                 >
                   {g.name}
                 </button>
@@ -529,7 +563,7 @@ export default function MovieFinder() {
               </button>
             </div>
             {recMovie && (
-              <button onClick={() => openMovie(recMovie.id)} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderRadius: 14, padding: 28, cursor: "pointer" }}>
+              <button className="row-card" onClick={() => openMovie(recMovie.id)} style={{ width: "100%", display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderRadius: 16, padding: 28, cursor: "pointer", color: TOKENS.paper }}>
                 <Poster path={recMovie.poster_path} size={140} />
                 <div style={{ fontSize: 22, fontWeight: 800, margin: "16px 0 6px" }}>{recMovie.title}</div>
                 <div style={{ fontSize: 13, color: TOKENS.muted, marginBottom: 14 }}>{(recMovie.release_date || "").slice(0, 4)}</div>
@@ -546,7 +580,7 @@ export default function MovieFinder() {
                 아직 찜한 영화가 없어요.
               </div>
             )}
-            <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 14 }}>
               {favoriteList.map((id) => (
                 <FavoriteRow key={id} id={id} onOpen={() => openMovie(id)} onToggle={() => toggleFavorite(id)} />
               ))}
@@ -564,23 +598,28 @@ function FavoriteRow({ id, onOpen, onToggle }) {
     tmdb(`/movie/${id}`).then(setM).catch(() => {});
   }, [id]);
   if (!m) return null;
-  return (
-    <button onClick={onOpen} style={{ display: "flex", gap: 16, alignItems: "center", textAlign: "left", background: TOKENS.surface, border: `1px solid ${TOKENS.border}`, borderRadius: 10, padding: 14, cursor: "pointer" }}>
-      <Poster path={m.poster_path} size={50} />
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 15.5, fontWeight: 700 }}>{m.title}</div>
-        <div style={{ fontSize: 12.5, color: TOKENS.muted }}>{(m.release_date || "").slice(0, 4)}</div>
-      </div>
-      <FavoriteButton active={true} onClick={onToggle} />
-    </button>
-  );
+  return <PosterCard movie={m} isFavorite={true} onOpen={onOpen} onToggleFavorite={onToggle} />;
 }
 
 function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, backLabel = "돌아가기", expandedPersonId, personDetail, onOpenPerson, onOpenMovie }) {
   const cast = (movie.credits?.cast || []).slice(0, 10);
   return (
-    <div style={{ minHeight: "100%", background: TOKENS.ink, color: TOKENS.paper, fontFamily: "'Segoe UI', -apple-system, Roboto, sans-serif", padding: "36px 20px 60px" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto" }}>
+    <div style={{ minHeight: "100%", background: TOKENS.ink, color: TOKENS.paper, fontFamily: "'Pretendard', -apple-system, 'Segoe UI', Roboto, sans-serif", padding: "36px 20px 60px", position: "relative" }}>
+      {/* 영화 배경 이미지를 위쪽에 흐리게 깔기 */}
+      {movie.backdrop_path && (
+        <div
+          style={{
+            position: "absolute",
+            inset: "0 0 auto 0",
+            height: 420,
+            backgroundImage: `linear-gradient(to bottom, rgba(11,15,25,0.35), ${TOKENS.ink}), url(${IMG_BACKDROP}${movie.backdrop_path})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center top",
+            pointerEvents: "none",
+          }}
+        />
+      )}
+      <div style={{ maxWidth: 720, margin: "0 auto", position: "relative" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
           <button onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6, background: "transparent", border: "none", color: TOKENS.muted, fontSize: 13.5, cursor: "pointer", padding: 0 }}>
             <ArrowLeft size={15} />
@@ -589,8 +628,10 @@ function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, backLabe
           <FavoriteButton active={isFavorite} onClick={onToggleFavorite} />
         </div>
 
-        <div style={{ display: "flex", gap: 20, marginBottom: 26 }}>
-          <Poster path={movie.poster_path} size={104} ratio={1.42} />
+        <div style={{ display: "flex", gap: 22, marginBottom: 26, alignItems: "flex-end" }}>
+          <div style={{ borderRadius: 10, overflow: "hidden", boxShadow: "0 16px 40px rgba(0,0,0,0.6)", flexShrink: 0 }}>
+            <Poster path={movie.poster_path} size={130} ratio={1.5} />
+          </div>
           <div>
             <div style={{ fontSize: 27, fontWeight: 800, letterSpacing: -0.3, marginBottom: 8 }}>{movie.title}</div>
             <div style={{ fontSize: 13.5, color: TOKENS.muted }}>
@@ -622,7 +663,7 @@ function MovieDetailView({ movie, isFavorite, onToggleFavorite, onBack, backLabe
                 <div key={c.cast_id || c.credit_id}>
                   <button
                     onClick={() => onOpenPerson(c.id)}
-                    style={{ width: "100%", display: "flex", gap: 12, alignItems: "center", background: expanded ? "rgba(225,29,72,0.06)" : TOKENS.surface, border: `1px solid ${expanded ? TOKENS.marquee : TOKENS.border}`, borderRadius: expanded ? "8px 8px 0 0" : 8, padding: "10px 14px", cursor: "pointer", textAlign: "left" }}
+                    style={{ width: "100%", display: "flex", gap: 12, alignItems: "center", background: expanded ? "rgba(225,29,72,0.06)" : TOKENS.surface, border: `1px solid ${expanded ? TOKENS.marquee : TOKENS.border}`, borderRadius: expanded ? "8px 8px 0 0" : 8, padding: "10px 14px", cursor: "pointer", textAlign: "left", color: TOKENS.paper }}
                   >
                     <Poster path={c.profile_path} size={36} ratio={1.3} />
                     <div style={{ flex: 1 }}>
