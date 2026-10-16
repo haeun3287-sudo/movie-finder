@@ -1,4 +1,3 @@
-
 name: Deploy Vite site
 
 on:
@@ -33,6 +32,8 @@ jobs:
 
       - name: Build site
         run: npm run build
+        env:
+          VITE_TMDB_API_KEY: ${{ secrets.VITE_TMDB_API_KEY }}
 
       - name: Prepare Pages
         uses: actions/configure-pages@v5
