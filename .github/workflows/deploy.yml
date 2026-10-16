@@ -16,8 +16,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+    build:
     runs-on: ubuntu-latest
+    environment:
+      name: github-pages
     steps:
       - name: Get code
         uses: actions/checkout@v4
